@@ -1,10 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SpinnerOption } from '../types';
-import { Plus, Trash2, RotateCw, Utensils, Coffee, Zap } from 'lucide-react';
+import { Plus, Trash2, RotateCw, Utensils, Coffee, Zap, RotateCcw } from 'lucide-react';
 
 const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#F1948A'];
 
-const PRESETS = {
+// Initial presets
+const DEFAULT_PRESETS: Record<string, any[]> = {
   default: [
     { id: '1', label: '红烧肉', color: COLORS[0] },
     { id: '2', label: '宫保鸡丁', color: COLORS[1] },
@@ -27,11 +28,42 @@ const PRESETS = {
 };
 
 const Spinner: React.FC = () => {
-  const [options, setOptions] = useState<SpinnerOption[]>(PRESETS.default);
+  const [currentMode, setCurrentMode] = useState<string>('default');
+  const [options, setOptions] = useState<SpinnerOption[]>([]);
   const [newOption, setNewOption] = useState('');
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [winner, setWinner] = useState<SpinnerOption | null>(null);
+
+  // Load options from localStorage when mode changes
+  useEffect(() => {
+    const loadOptions = () => {
+      const savedKey = `spinner_options_${currentMode}`;
+      const savedData = localStorage.getItem(savedKey);
+      
+      if (savedData) {
+        try {
+          setOptions(JSON.parse(savedData));
+        } catch (e) {
+          console.error("Failed to parse saved spinner options", e);
+          setOptions(DEFAULT_PRESETS[currentMode]);
+        }
+      } else {
+        setOptions(DEFAULT_PRESETS[currentMode]);
+      }
+    };
+    
+    setWinner(null);
+    setRotation(0);
+    loadOptions();
+  }, [currentMode]);
+
+  // Save options to localStorage whenever they change
+  useEffect(() => {
+    if (options.length > 0) {
+      localStorage.setItem(`spinner_options_${currentMode}`, JSON.stringify(options));
+    }
+  }, [options, currentMode]);
 
   const addOption = () => {
     if (newOption.trim()) {
@@ -51,10 +83,13 @@ const Spinner: React.FC = () => {
     setOptions(options.filter(o => o.id !== id));
   };
 
-  const loadPreset = (presetKey: keyof typeof PRESETS) => {
-    setOptions(PRESETS[presetKey]);
-    setWinner(null);
-    setRotation(0);
+  const resetToDefault = () => {
+    if (window.confirm('确定要恢复该场景的默认选项吗？您的自定义修改将丢失。')) {
+       const defaults = DEFAULT_PRESETS[currentMode];
+       setOptions(defaults);
+       localStorage.setItem(`spinner_options_${currentMode}`, JSON.stringify(defaults));
+       setWinner(null);
+    }
   };
 
   const spin = () => {
@@ -100,17 +135,47 @@ const Spinner: React.FC = () => {
         
         {/* Presets */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-           <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">快速场景选择</h3>
+           <div className="flex justify-between items-center mb-4">
+              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">场景选择</h3>
+              {JSON.stringify(options) !== JSON.stringify(DEFAULT_PRESETS[currentMode]) && (
+                <button 
+                  onClick={resetToDefault} 
+                  className="text-xs text-orange-500 hover:text-orange-700 flex items-center gap-1"
+                  title="恢复默认设置"
+                >
+                  <RotateCcw size={12} /> 恢复默认
+                </button>
+              )}
+           </div>
+           
            <div className="flex gap-2">
-             <button onClick={() => loadPreset('default')} className="flex-1 flex flex-col items-center gap-1 p-3 rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors">
+             <button 
+                onClick={() => setCurrentMode('default')} 
+                className={`flex-1 flex flex-col items-center gap-1 p-3 rounded-xl transition-all duration-200 border-2
+                    ${currentMode === 'default' 
+                        ? 'bg-orange-50 border-orange-200 text-orange-600 shadow-sm' 
+                        : 'bg-white border-transparent text-gray-500 hover:bg-gray-50'}`}
+             >
                 <Utensils size={20} />
                 <span className="text-xs font-medium">家常菜</span>
              </button>
-             <button onClick={() => loadPreset('takeout')} className="flex-1 flex flex-col items-center gap-1 p-3 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+             <button 
+                onClick={() => setCurrentMode('takeout')} 
+                className={`flex-1 flex flex-col items-center gap-1 p-3 rounded-xl transition-all duration-200 border-2
+                    ${currentMode === 'takeout' 
+                        ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-sm' 
+                        : 'bg-white border-transparent text-gray-500 hover:bg-gray-50'}`}
+             >
                 <Zap size={20} />
                 <span className="text-xs font-medium">外卖</span>
              </button>
-             <button onClick={() => loadPreset('healthy')} className="flex-1 flex flex-col items-center gap-1 p-3 rounded-xl bg-green-50 text-green-600 hover:bg-green-100 transition-colors">
+             <button 
+                onClick={() => setCurrentMode('healthy')} 
+                className={`flex-1 flex flex-col items-center gap-1 p-3 rounded-xl transition-all duration-200 border-2
+                    ${currentMode === 'healthy' 
+                        ? 'bg-green-50 border-green-200 text-green-600 shadow-sm' 
+                        : 'bg-white border-transparent text-gray-500 hover:bg-gray-50'}`}
+             >
                 <Coffee size={20} />
                 <span className="text-xs font-medium">轻食</span>
              </button>
@@ -121,7 +186,7 @@ const Spinner: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
             <RotateCw size={20} className="text-orange-500" /> 
-            自定义选项
+            编辑选项 <span className="text-xs font-normal text-gray-400 ml-auto">已自动保存</span>
           </h2>
           
           <div className="flex gap-2 mb-6">
@@ -140,16 +205,19 @@ const Spinner: React.FC = () => {
 
           <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
             {options.map((opt) => (
-              <div key={opt.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+              <div key={opt.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 animate-fade-in">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: opt.color }}></div>
+                  <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: opt.color }}></div>
                   <span className="font-medium text-gray-700">{opt.label}</span>
                 </div>
-                <button onClick={() => removeOption(opt.id)} className="text-gray-400 hover:text-red-500">
+                <button onClick={() => removeOption(opt.id)} className="text-gray-400 hover:text-red-500 transition-colors">
                   <Trash2 size={16} />
                 </button>
               </div>
             ))}
+            {options.length === 0 && (
+                <p className="text-center text-gray-400 text-sm py-4">暂无选项，请添加</p>
+            )}
           </div>
         </div>
       </div>
@@ -208,7 +276,7 @@ const Spinner: React.FC = () => {
              disabled={isSpinning || options.length < 2}
              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
                w-20 h-20 bg-white rounded-full shadow-lg border-4 border-orange-50 
-               flex items-center justify-center font-bold text-orange-600 hover:scale-105 active:scale-95 transition-all z-20 text-lg"
+               flex items-center justify-center font-bold text-orange-600 hover:scale-105 active:scale-95 transition-all z-20 text-lg disabled:opacity-80 disabled:cursor-not-allowed"
            >
              {isSpinning ? '...' : '开始'}
            </button>

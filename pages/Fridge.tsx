@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Plus, X, Sparkles, Loader2, Tag, Search, ChefHat } from 'lucide-react';
+import { Plus, X, Sparkles, Tag, Search, ChefHat, AlertCircle } from 'lucide-react';
 import { generateRecipesFromIngredients } from '../services/geminiService';
 import { Recipe, LoadingState } from '../types';
 import RecipeCard from '../components/RecipeCard';
+import ChefLoader from '../components/ChefLoader';
 
 const COMMON_INGREDIENTS = ['鸡蛋', '西红柿', '土豆', '猪肉', '鸡肉', '豆腐', '青椒', '洋葱', '牛肉', '胡萝卜', '虾', '茄子'];
 
@@ -115,12 +116,11 @@ const Fridge: React.FC = () => {
             onClick={handleGenerate}
             disabled={status === LoadingState.LOADING}
             className="w-full py-5 rounded-2xl font-bold text-xl flex items-center justify-center gap-3 transition-all duration-300
-              bg-gray-900 hover:bg-orange-500 text-white shadow-xl hover:shadow-orange-500/30 transform hover:scale-[1.01] active:scale-[0.99]"
+              bg-gray-900 hover:bg-orange-500 text-white shadow-xl hover:shadow-orange-500/30 transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {status === LoadingState.LOADING ? (
               <>
-                <Loader2 className="animate-spin" size={24} />
-                正在构思美味食谱...
+                 AI 正在思考中...
               </>
             ) : (
               <>
@@ -141,6 +141,8 @@ const Fridge: React.FC = () => {
         )}
       </div>
 
+      {status === LoadingState.LOADING && <ChefLoader />}
+
       {status === LoadingState.SUCCESS && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-fade-in pb-12">
           {recipes.map((recipe) => (
@@ -150,9 +152,10 @@ const Fridge: React.FC = () => {
       )}
       
       {status === LoadingState.ERROR && (
-        <div className="text-center py-12 bg-red-50 rounded-3xl text-red-600 border border-red-100">
-          <p className="font-bold">生成失败</p>
-          <p className="text-sm mt-1 opacity-80">网络似乎开了小差，请稍后重试。</p>
+        <div className="text-center py-12 bg-red-50 rounded-3xl text-red-600 border border-red-100 flex flex-col items-center">
+          <AlertCircle size={48} className="mb-4 text-red-400" />
+          <p className="font-bold text-lg">生成失败</p>
+          <p className="text-sm mt-2 opacity-80 max-w-md">可能是网络问题或 API Key 无效。请检查您的设置后重试。</p>
         </div>
       )}
     </div>

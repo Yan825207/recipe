@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { MapPin, Search, Loader2, Compass } from 'lucide-react';
+import { Search, Compass, AlertCircle } from 'lucide-react';
 import { getCitySpecialties } from '../services/geminiService';
 import { Recipe, LoadingState } from '../types';
 import RecipeCard from '../components/RecipeCard';
+import ChefLoader from '../components/ChefLoader';
 
 const POPULAR_CITIES = ['成都', '广州', '北京', '上海', '西安', '重庆', '长沙', '武汉', '杭州', '南京', '兰州', '哈尔滨'];
 
@@ -82,13 +83,7 @@ const Explore: React.FC = () => {
          </div>
       )}
 
-      {status === LoadingState.LOADING && (
-        <div className="flex flex-col items-center justify-center py-32">
-          <Loader2 className="animate-spin text-orange-500 mb-6" size={56} />
-          <h3 className="text-xl font-bold text-gray-800 mb-2">正在寻味 {selectedCity}</h3>
-          <p className="text-gray-500">AI 正在为您搜罗大街小巷的地道美食...</p>
-        </div>
-      )}
+      {status === LoadingState.LOADING && <ChefLoader />}
 
       {status === LoadingState.SUCCESS && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-fade-in pb-12">
@@ -99,8 +94,9 @@ const Explore: React.FC = () => {
       )}
 
       {status === LoadingState.ERROR && (
-         <div className="text-center py-12 bg-red-50 rounded-2xl text-red-600">
-           获取数据失败，请稍后重试。
+         <div className="text-center py-12 bg-red-50 rounded-2xl text-red-600 border border-red-100 flex flex-col items-center">
+           <AlertCircle size={40} className="mb-3 opacity-50" />
+           <p>获取数据失败，请检查网络或 Key 后稍后重试。</p>
          </div>
       )}
     </div>
