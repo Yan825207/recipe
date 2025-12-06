@@ -1,8 +1,30 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Recipe } from "../types";
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+// Helper to get the API key dynamically
+// Priority: LocalStorage (User entered) -> Environment Variable (Build time)
+const getApiKey = (): string => {
+  const localKey = localStorage.getItem('gemini_api_key');
+  if (localKey) return localKey;
+  
+  // Safe access to process.env for Vite replacement
+  try {
+    return process.env.API_KEY || '';
+  } catch {
+    return '';
+  }
+};
+
+// Helper to clean JSON string (remove Markdown code blocks if present)
+const cleanJsonString = (str: string): string => {
+  if (!str) return '{}';
+  let cleaned = str.trim();
+  // Remove markdown code blocks ```json ... ```
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(json)?/, '').replace(/```$/, '');
+  }
+  return cleaned.trim();
+};
 
 // Schema for Recipe structure
 const recipeSchema: Schema = {
@@ -37,17 +59,18 @@ const recipeSchema: Schema = {
 };
 
 const generateImageUrl = (recipeName: string) => {
-  // Construct a prompt for Pollinations AI to generate appetizing food photography
-  // Using English keywords improves the quality of the image generation model
   const prompt = `professional food photography of ${encodeURIComponent(recipeName)}, delicious chinese dish, 8k resolution, cinematic lighting, appetizing, closeup, restaurant quality`;
   return `https://image.pollinations.ai/prompt/${prompt}?width=800&height=600&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
 };
 
 export const generateRecipesFromIngredients = async (ingredients: string[]): Promise<Recipe[]> => {
+  const apiKey = getApiKey();
   if (!apiKey) {
     console.warn("No API Key provided");
-    return [];
+    throw new Error("请先设置 API Key");
   }
+
+  const ai = new GoogleGenAI({ apiKey });
 
   const prompt = `我有这些食材: ${ingredients.join(', ')}。
   请推荐3道我可以做的家常菜。请发挥创意，但也保持实用性。请用中文回答。`;
@@ -63,7 +86,9 @@ export const generateRecipesFromIngredients = async (ingredients: string[]): Pro
       }
     });
 
-    const data = JSON.parse(response.text || '{}');
+    const cleanJson = cleanJsonString(response.text || '{}');
+    const data = JSON.parse(cleanJson);
+    
     return data.recipes.map((r: any, index: number) => ({
       ...r,
       id: `gen-${Date.now()}-${index}`,
@@ -71,12 +96,17 @@ export const generateRecipesFromIngredients = async (ingredients: string[]): Pro
     }));
   } catch (error) {
     console.error("Gemini API Error:", error);
-    throw new Error("生成菜谱失败，请稍后重试。");
+    throw new Error("生成菜谱失败，请检查网络或 API Key。");
   }
 };
 
 export const getCitySpecialties = async (city: string): Promise<Recipe[]> => {
-  if (!apiKey) return [];
+  const apiKey = getApiKey();
+  if (!apiKey) {
+      throw new Error("请先设置 API Key");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
 
   const prompt = `请列出 4 道来自 ${city} 的著名地道特色菜。并附上详细的制作教程。请用中文回答。`;
 
@@ -91,7 +121,9 @@ export const getCitySpecialties = async (city: string): Promise<Recipe[]> => {
       }
     });
 
-    const data = JSON.parse(response.text || '{}');
+    const cleanJson = cleanJsonString(response.text || '{}');
+    const data = JSON.parse(cleanJson);
+    
     return data.recipes.map((r: any, index: number) => ({
       ...r,
       id: `city-${city}-${index}`,
